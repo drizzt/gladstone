@@ -1,0 +1,8 @@
+2010-09-26  Gibro Vacco  <gibrovacco@gmail.com>
+
+	 Semi-original revision brought to gitorius with some changes:
+   - Added (optional) possibility to automatically dowload the reference code
+   at compile time.
+   - Added automatic conversion of the filenames to be Makefile-firendly.
+   - Added option to specify a path where the reference code can be found. 
+

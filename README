@@ -1,0 +1,29 @@
+
+The aim of this project is to create an opensource ITU-T G729 compliant codec. Even though the first use case will be as a GStreamer element, design and implementation will be done to ease the inclusion in a generic multimedia framework.
+
+Currently the core codec is based on ITU-T reference code (that must be downloaded). The GStreamer elements are wrapping around it to create functional encoder and decoder GStreamer elements.
+
+The implementation has been tested with both Farsight and telepathy-stream-engine in ARM and x86 environments on the following platforms:
+
+- Nokia N810 (telepathy-stream-engine)
+- Nokia N900 (telepathy-stream-engine)
+- x86 PC (farsight)
+
+It has been tested against (aka connecting with):
+
+- Nokia n810 (default codecs).
+- N900 (default codecs).
+- Skype.
+- Google talk.
+
+and is roughly working. Some minor issues (e.g. suspicious "holes" receiving data from internet tables) must still be addressed and fixed. Performances are also far from being optimal.
+
+    * NOTE 1: before compiling the project you need to download g729 ITU-T specifications (with reference code) and set G729_PATH environment variable to point to a c_code folder, e.g.: 
+
+export G729_PATH=/home/gibrovacco/Soft/g729AnnexA/c_code
+
+    As an alternative, you can use the "--enable-refcode-download" configure option.
+
+    * NOTE 2: prior compiling with GCC the makefiles coder.mak and decoder.mak (in the chosen ITU-T reference code folder) must be modified accordingly (see in the files themself for more hints). This step is automatically performed in case the reference code is downloaded with the "--enable-refcode-download" option.
+
+
