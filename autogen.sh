@@ -17,7 +17,7 @@ then
 fi
 . ./gst-autogen.sh
 
-CONFIGURE_DEF_OPT='--enable-maintainer-mode --enable-debug'
+CONFIGURE_DEF_OPT=''
 
 autogen_options $@
 

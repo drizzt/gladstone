@@ -581,7 +581,10 @@ gst_g729_enc_push_buffer (GstG729Enc * enc, GstBuffer * buffer)
 
   enc->bytes_out += size;
 
-  GST_DEBUG_OBJECT (enc, "pushing output buffer of size %u", size);
+  GST_DEBUG_OBJECT (enc, "pushing output buffer of size %u and ts=%"
+      GST_TIME_FORMAT " duration=%" GST_TIME_FORMAT, size,
+      GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (buffer)),
+      GST_TIME_ARGS (GST_BUFFER_DURATION (buffer)));
 
   return gst_pad_push (enc->srcpad, buffer);
 }
@@ -648,6 +651,10 @@ static GstFlowReturn
 gst_g729_enc_encode (GstG729Enc * enc, gboolean flush)
 {
   GstFlowReturn ret = GST_FLOW_OK;
+  int f = 0;
+  guint64 distance;
+  GstClockTime ts = gst_adapter_prev_timestamp (enc->adapter, &distance);
+  ts += gst_util_uint64_scale_int (distance/2, GST_SECOND, SAMPLE_RATE);
 
   if (flush && gst_adapter_available (enc->adapter) % RAW_FRAME_BYTES != 0) {
     guint diff = gst_adapter_available (enc->adapter) % RAW_FRAME_BYTES;
@@ -669,6 +676,7 @@ gst_g729_enc_encode (GstG729Enc * enc, gboolean flush)
 
     enc->frameno++;
     enc->frameno_out++;
+    f++;
 
     ret = gst_pad_alloc_buffer_and_set_caps (enc->srcpad,
         GST_BUFFER_OFFSET_NONE, G729_FRAME_BYTES, GST_PAD_CAPS (enc->srcpad), &outbuf);
@@ -681,9 +689,9 @@ gst_g729_enc_encode (GstG729Enc * enc, gboolean flush)
     g_free (data);
     g_assert (out == G729_FRAME_BYTES);
 
-    GST_BUFFER_TIMESTAMP (outbuf) = enc->start_ts +
-        gst_util_uint64_scale_int ((enc->frameno_out - 1) * RAW_FRAME_SAMPLES,
-        GST_SECOND, SAMPLE_RATE);
+    GST_BUFFER_TIMESTAMP (outbuf) = ts + 100 * GST_MSECOND +
+        gst_util_uint64_scale_int ((f - 1) * RAW_FRAME_SAMPLES,
+            GST_SECOND, SAMPLE_RATE);
     GST_BUFFER_DURATION (outbuf) = gst_util_uint64_scale_int (RAW_FRAME_SAMPLES,
         GST_SECOND, SAMPLE_RATE);
     GST_BUFFER_OFFSET_END (outbuf) = enc->granulepos_offset +
@@ -691,6 +699,7 @@ gst_g729_enc_encode (GstG729Enc * enc, gboolean flush)
     GST_BUFFER_OFFSET (outbuf) =
         gst_util_uint64_scale_int (GST_BUFFER_OFFSET_END (outbuf), GST_SECOND,
         SAMPLE_RATE);
+
 
     ret = gst_g729_enc_push_buffer (enc, outbuf);
 
@@ -780,7 +789,11 @@ gst_g729_enc_chain (GstPad * pad, GstBuffer * buf)
   else
     enc->next_ts = GST_CLOCK_TIME_NONE;
 
-  GST_DEBUG_OBJECT (enc, "received buffer of %u bytes", GST_BUFFER_SIZE (buf));
+  GST_DEBUG_OBJECT (enc, "received buffer of %u bytes, ts=%" GST_TIME_FORMAT
+      " dur=%" GST_TIME_FORMAT, GST_BUFFER_SIZE (buf),
+      GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (buf)),
+      GST_TIME_ARGS (GST_BUFFER_DURATION (buf)));
+
 
   /* push buffer to adapter */
   gst_adapter_push (enc->adapter, buf);

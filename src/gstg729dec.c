@@ -545,7 +545,7 @@ g729_dec_chain_parse_data (GstG729Dec * dec, GstBuffer * buf,
   /* now decode each frame */
   for (i = 0; i < fpp; i++) {
     GstBuffer *outbuf;
-    gint16 *out_data;
+    guint8 *out_data;
 
     res = gst_pad_alloc_buffer_and_set_caps (dec->srcpad,
         GST_BUFFER_OFFSET_NONE, RAW_FRAME_BYTES,
@@ -556,7 +556,7 @@ g729_dec_chain_parse_data (GstG729Dec * dec, GstBuffer * buf,
       return res;
     }
 
-    out_data = (gint16 *) GST_BUFFER_DATA (outbuf);
+    out_data = GST_BUFFER_DATA (outbuf);
 
     res = g729_decode (dec, data+i*G729_FRAME_BYTES, out_data);
 
@@ -572,15 +572,15 @@ g729_dec_chain_parse_data (GstG729Dec * dec, GstBuffer * buf,
 
     GST_BUFFER_OFFSET (outbuf) = dec->granulepos - RAW_FRAME_SAMPLES;
     GST_BUFFER_OFFSET_END (outbuf) = dec->granulepos;
-    GST_BUFFER_TIMESTAMP (outbuf) = timestamp;
-    GST_BUFFER_DURATION (outbuf) = FRAME_DURATION;
+    GST_BUFFER_TIMESTAMP (outbuf) = timestamp + 100 * GST_MSECOND;
+    GST_BUFFER_DURATION (outbuf) = 10 * GST_MSECOND;
 
     dec->granulepos += RAW_FRAME_SAMPLES;
-    dec->segment.last_stop += FRAME_DURATION;
+    dec->segment.last_stop = GST_BUFFER_TIMESTAMP (outbuf);
 
     GST_LOG_OBJECT (dec, "pushing buffer with ts=%" GST_TIME_FORMAT ", dur=%"
-        GST_TIME_FORMAT, GST_TIME_ARGS (timestamp),
-        GST_TIME_ARGS (FRAME_DURATION));
+        GST_TIME_FORMAT, GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (outbuf)),
+        GST_TIME_ARGS (GST_BUFFER_DURATION (outbuf)));
 
     res = gst_pad_push (dec->srcpad, outbuf);
 
@@ -588,7 +588,7 @@ g729_dec_chain_parse_data (GstG729Dec * dec, GstBuffer * buf,
       GST_DEBUG_OBJECT (dec, "flow: %s", gst_flow_get_name (res));
       break;
     }
-    timestamp = -1;
+    timestamp += GST_BUFFER_DURATION (outbuf);
   }
 
   return res;
