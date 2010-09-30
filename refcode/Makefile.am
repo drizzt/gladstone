@@ -11,10 +11,16 @@ arch.zip :
 $(target_makefile) : $(target_dir)
 	./tolower.sh $(G729_PATH)
 
-apply_patches:
+if APPLY_PATCHES
+patches.stamp : $(target_makefile)
+	./apply_patches.sh
+endif
 
 clean:
 	rm -rf Soft G729E.*
 
+if APPLY_PATCHES
+all : patches.stamp
+else
 all : $(target_makefile)
-	echo $(TARGET_MAKEFILE) &
+endif

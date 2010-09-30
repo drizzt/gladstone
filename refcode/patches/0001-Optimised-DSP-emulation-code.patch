@@ -1,0 +1,306 @@
+diff --git Soft/g729AnnexA/c_code/basic_op.c Soft/g729AnnexA/c_code/basic_op.c
+index 970b4b1..a089009 100644
+--- Soft/g729AnnexA/c_code/basic_op.c
++++ Soft/g729AnnexA/c_code/basic_op.c
+@@ -39,6 +39,7 @@ Flag Carry =0;
+  |___________________________________________________________________________|
+ */
+ 
++#ifndef ENABLE_OPTIMISATIONS
+ 
+ /*___________________________________________________________________________
+  |                                                                           |
+@@ -1953,3 +1954,4 @@ Word16 norm_l(Word32 L_var1)
+    return(var_out);
+   }
+ 
++#endif
+diff --git Soft/g729AnnexA/c_code/basic_op.h Soft/g729AnnexA/c_code/basic_op.h
+index fa88f01..362c1bf 100644
+--- Soft/g729AnnexA/c_code/basic_op.h
++++ Soft/g729AnnexA/c_code/basic_op.h
+@@ -13,6 +13,7 @@ extern Flag Carry;
+ #define MAX_16 (Word16)0x7fff
+ #define MIN_16 (Word16)0x8000
+ 
++#define ENABLE_OPTIMISATIONS
+ 
+ /*___________________________________________________________________________
+  |                                                                           |
+@@ -20,45 +21,201 @@ extern Flag Carry;
+  |___________________________________________________________________________|
+ */
+ 
+-Word16 sature(Word32 L_var1);             /* Limit to 16 bits,    1 */
+-Word16 add(Word16 var1, Word16 var2);     /* Short add,           1 */
+-Word16 sub(Word16 var1, Word16 var2);     /* Short sub,           1 */
++#ifndef ENABLE_OPTIMISATIONS
++Word16 add(Word16 var1, Word16 b);     /* Short add,           1 */
++Word16 sub(Word16 var1, Word16 b);     /* Short sub,           1 */
+ Word16 abs_s(Word16 var1);                /* Short abs,           1 */
+-Word16 shl(Word16 var1, Word16 var2);     /* Short shift left,    1 */
+-Word16 shr(Word16 var1, Word16 var2);     /* Short shift right,   1 */
+-Word16 mult(Word16 var1, Word16 var2);    /* Short mult,          1 */
+-Word32 L_mult(Word16 var1, Word16 var2);  /* Long mult,           1 */
++Word16 shl(Word16 var1, Word16 b);     /* Short shift left,    1 */
++Word16 shr(Word16 var1, Word16 b);     /* Short shift right,   1 */
++Word16 mult(Word16 var1, Word16 b);    /* Short mult,          1 */
++Word32 L_mult(Word16 var1, Word16 b);  /* Long mult,           1 */
+ Word16 negate(Word16 var1);               /* Short negate,        1 */
+-Word16 extract_h(Word32 L_var1);          /* Extract high,        1 */
+-Word16 extract_l(Word32 L_var1);          /* Extract low,         1 */
+-Word16 round(Word32 L_var1);              /* Round,               1 */
+-Word32 L_mac(Word32 L_var3, Word16 var1, Word16 var2); /* Mac,    1 */
+-Word32 L_msu(Word32 L_var3, Word16 var1, Word16 var2); /* Msu,    1 */
+-Word32 L_macNs(Word32 L_var3, Word16 var1, Word16 var2);/* Mac without sat, 1*/
+-Word32 L_msuNs(Word32 L_var3, Word16 var1, Word16 var2);/* Msu without sat, 1*/
+-
+-Word32 L_add(Word32 L_var1, Word32 L_var2);   /* Long add,        2 */
+-Word32 L_sub(Word32 L_var1, Word32 L_var2);   /* Long sub,        2 */
+-Word32 L_add_c(Word32 L_var1, Word32 L_var2); /*Long add with c,  2 */
+-Word32 L_sub_c(Word32 L_var1, Word32 L_var2); /*Long sub with c,  2 */
+-Word32 L_negate(Word32 L_var1);               /* Long negate,     2 */
+-Word16 mult_r(Word16 var1, Word16 var2);  /* Mult with round,     2 */
+-Word32 L_shl(Word32 L_var1, Word16 var2); /* Long shift left,     2 */
+-Word32 L_shr(Word32 L_var1, Word16 var2); /* Long shift right,    2 */
+-Word16 shr_r(Word16 var1, Word16 var2);/* Shift right with round, 2 */
+-Word16 mac_r(Word32 L_var3, Word16 var1, Word16 var2);/* Mac with rounding, 2*/
+-Word16 msu_r(Word32 L_var3, Word16 var1, Word16 var2);/* Msu with rounding, 2*/
++Word16 extract_h(Word32 a);          /* Extract high,        1 */
++Word16 extract_l(Word32 a);          /* Extract low,         1 */
++Word16 round(Word32 a);              /* Round,               1 */
++Word32 L_mac(Word32 L_var3, Word16 var1, Word16 b); /* Mac,    1 */
++Word32 L_msu(Word32 L_var3, Word16 var1, Word16 b); /* Msu,    1 */
++Word32 L_macNs(Word32 L_var3, Word16 var1, Word16 b);/* Mac without sat, 1*/
++Word32 L_msuNs(Word32 L_var3, Word16 var1, Word16 b);/* Msu without sat, 1*/
++Word32 L_sub(Word32 a, Word32 L_b);   /* Long sub,        2 */
++Word32 L_add(Word32 a, Word32 L_b);   /* Long add,        2 */
++Word32 L_add_c(Word32 a, Word32 L_b); /*Long add with c,  2 */
++Word32 L_sub_c(Word32 a, Word32 L_b); /*Long sub with c,  2 */
++Word32 L_negate(Word32 a);               /* Long negate,     2 */
++Word16 mult_r(Word16 var1, Word16 b);  /* Mult with round,     2 */
++Word32 L_shl(Word32 a, Word16 b); /* Long shift left,     2 */
++Word32 L_shr(Word32 a, Word16 b); /* Long shift right,    2 */
++Word16 shr_r(Word16 var1, Word16 b);/* Shift right with round, 2 */
++Word16 mac_r(Word32 L_var3, Word16 var1, Word16 b);/* Mac with rounding, 2*/
++Word16 msu_r(Word32 L_var3, Word16 var1, Word16 b);/* Msu with rounding, 2*/
+ Word32 L_deposit_h(Word16 var1);       /* 16 bit var1 -> MSB,     2 */
+ Word32 L_deposit_l(Word16 var1);       /* 16 bit var1 -> LSB,     2 */
++Word32 L_shr_r(Word32 a, Word16 b);/* Long shift right with round,  3*/
++Word32 L_abs(Word32 a);            /* Long abs,              3 */
++Word32 L_sat(Word32 a);            /* Long saturation,       4 */
++Word16 norm_s(Word16 var1);             /* Short norm,           15 */
++Word16 div_s(Word16 var1, Word16 b); /* Short division,       18 */
++Word16 sature(Word32 a);             /* Limit to 16 bits,    1 */
++Word16 norm_l(Word32 a);           /* Long norm,            30 */
++#endif
+ 
+-Word32 L_shr_r(Word32 L_var1, Word16 var2);/* Long shift right with round,  3*/
+-Word32 L_abs(Word32 L_var1);            /* Long abs,              3 */
+ 
+-Word32 L_sat(Word32 L_var1);            /* Long saturation,       4 */
++#ifdef ENABLE_OPTIMISATIONS
+ 
+-Word16 norm_s(Word16 var1);             /* Short norm,           15 */
++/* TODO no overflow check */
++#define add(a,b) ((a)+(b))
++/* TODO no overflow check */
++#define sub(a,b) ((a)-(b))
++/* TODO no overflow check */
++#define abs_s(a) ((a)<0?-(a):(a))
++
++/* TODO no overflow check */
++#define shl(a,b) ((a)<<(b))
++/* TODO no overflow check */
++#define shr(a,b) ((a)>>(b))
++
++#define mult(a,b) shr((((Word32)(a))*((Word32)(b))),15)
++#define L_mult(a,b) shl((((Word32)(a))*((Word32)(b))),1)
++#define negate(a) -(a)
++#define extract_h(a) (((Word32)(a))>>16)
++#define extract_l(a) ((Word16)(a))
++#define round(var) (extract_h(L_add(((Word32)(var)),0x10000)))
++#define L_mac(c,a,b) L_add(c,L_mult(a,b))
++#define L_msu(c,a,b) L_sub(c,L_mult(a,b))
++//this is never used
++#define L_macNs(c,a,b) L_add(c,L_mult(a,b))
++#define L_msuNs(c,a,b) L_sub_c(c,L_mult(a,b))
++
++/* TODO not exact */
++static inline Word32 L_add(Word32 a,Word32 b) { 
++  if (((a ^ b) & MIN_32) == 0 && (((a + b) ^ a) & MIN_32) != 0){
++    Overflow=1;
++
++    if(a>0)
++      return MAX_32;
++
++    return MIN_32;
++  }
++
++  return a + b;
++}
++
++/* TODO not exact */
++static inline Word32 L_sub(Word32 a,Word32 b){
++  if (((a ^ b) & MIN_32) != 0 && (((a - b) ^ a) & MIN_32) != 0){
++    Overflow=1;
++
++    if (a > 0)
++      return MAX_32;
++
++    return MIN_32;
++  }
++  
++  return a - b;
++}
++
++#define L_negate(a) (((a) == MIN_32) ? MAX_32 : -(a))
++#define mult_r(a,b) ((((Word32)(a) * (Word32)(b) + (Word32) 0x00004000) ) >> 15)
++
++static inline Word32 L_shl(Word32 a, short b) {
++  if(b <= 0){                              
++    return a>>-b;                          
++  }                                        
++                                           
++  if( a > 0 ){                             
++    if ((a >> (8*sizeof(a) - b))){         
++      Overflow = 1;                        
++      return MAX_32;                          
++    }                                      
++  }else if((((-a) >> (8*sizeof(a) - b)))){ 
++    Overflow = 1;                          
++    return MIN_32;                            
++  }                                        
++  return a<<b;                             
++}
++
++static inline Word32 L_shr(Word32 a, short b) {
++  if (b < 0) {                                     
++    return L_shl(a,-b);                          
++  }                                                
++                                                   
++  if (a >= 0){                                     
++    return a >> b;                                 
++  }                                                
++                                                   
++  return b >= (sizeof(a)*8-1)? -1 : -((-a) >> b);  
++}
++
++static inline Word16 shr_r (Word16 a, short b){ 
++ if (b > 0)
++   return shr(add(a,1 << (b - 1)), b);
++ 
++ return shl(a, -b);
++}
++
++#define mac_r(a, b, c) \
++  extract_h(L_add(L_mac((Word32)(a), (Word16)(b), (Word16)(c)), (Word32) 0x00008000))
++
++#define L_deposit_h(a)  ((Word32)(a) << 16)
++#define L_deposit_l(a)  ((Word32)(a))
++
++static inline Word32 L_shr_r(Word32 a, short b){
++  if(b > 0)
++    return L_shr(L_add(a ,1 << (b - 1)), b);
++
++  return L_shl(a , -b);
++}
++
++static inline Word32 L_abs(Word32 a){
++  if( a < 0 ){
++    if( a == MIN_32 )
++      return MAX_32;
++    return -a;
++  }
++
++  return a;
++}
++
++static inline short norm_s(Word16 a){
++  short ret;
++  if (a < 0)
++    a = -a;
++
++  for(ret=15 ; a < (1 << ret); ret--);
++
++  return (14-ret)%15;
++}
++
++static inline Word16 div_s(Word16 a, Word16 b){
++  if (a == b)
++    return MAX_16;
++
++  return (((Word32)a)<<15)/(Word32)b; 
++}
++
++static inline short norm_l(Word32 a){
++  short ret;
++  if (a < 0)
++    a = -a;
++
++  for(ret=31; a < (((unsigned long)0x00000001L) << ret); ret--);
++
++  return (30-ret)%31;
++}
++
++static inline Word16 sature(Word32 a){
++  if (a > 0X7fffL) {
++    Overflow = 1;
++    return MAX_16;
++  }
++  
++  if (a < 0xffff8000L) {
++    Overflow = 1;
++    return MIN_16;
++  } 
+ 
+-Word16 div_s(Word16 var1, Word16 var2); /* Short division,       18 */
++  return (Word16)a;
+ 
+-Word16 norm_l(Word32 L_var1);           /* Long norm,            30 */
++}
+ 
++#endif
+diff --git Soft/g729AnnexA/c_code/dspfunc.c Soft/g729AnnexA/c_code/dspfunc.c
+index 53c4f50..9fc9e5c 100644
+--- Soft/g729AnnexA/c_code/dspfunc.c
++++ Soft/g729AnnexA/c_code/dspfunc.c
+@@ -14,6 +14,8 @@
+ #include "ld8a.h"
+ #include "tab_ld8a.h"
+ 
++#define INLINE_FUNCS
++
+ /*___________________________________________________________________________
+  |                                                                           |
+  |   Function Name : Pow2()                                                  |
+@@ -33,6 +35,9 @@
+ */
+ 
+ 
++#ifdef INLINE_FUNCS
++inline
++#endif
+ Word32 Pow2(        /* (o) Q0  : result       (range: 0<=val<=0x7fffffff) */
+   Word16 exponent,  /* (i) Q0  : Integer part.      (range: 0<=val<=30)   */
+   Word16 fraction   /* (i) Q15 : Fractional part.   (range: 0.0<=val<1.0) */
+@@ -80,6 +85,9 @@ Word32 Pow2(        /* (o) Q0  : result       (range: 0<=val<=0x7fffffff) */
+  |___________________________________________________________________________|
+ */
+ 
++#ifdef INLINE_FUNCS
++inline
++#endif
+ void Log2(
+   Word32 L_x,       /* (i) Q0 : input value                                 */
+   Word16 *exponent, /* (o) Q0 : Integer part of Log2.   (range: 0<=val<=30) */
+@@ -144,6 +152,9 @@ void Log2(
+ */
+ 
+ 
++#ifdef INLINE_FUNCS
++inline
++#endif
+ Word32 Inv_sqrt(   /* (o) Q30 : output value   (range: 0<=val<1)           */
+   Word32 L_x       /* (i) Q0  : input value    (range: 0<=val<=7fffffff)   */
+ )
