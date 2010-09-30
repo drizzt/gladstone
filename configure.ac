@@ -20,6 +20,9 @@ AM_MAINTAINER_MODE
 dnl AM_REFCODE_DOWNLOAD provides the option to enable reference code download
 AM_REFCODE_DOWNLOAD
 
+dnl AM_APPLY_PATCHES provides the option to enable experimental optimisation patches
+AM_APPLY_PATCHES
+
 dnl AM_REF_G729_PATH provides the path to reference code
 AC_ARG_WITH(refcode-prefix,
   AC_HELP_STRING([--with-refcode-prefix=PFX],
