@@ -1,3 +1,10 @@
+2010-09-30  Gibro Vacco  <gibrovacco@gmail.com>
+
+   - Added timestamp handling improvements - credits to Youness Alaoui aka
+   finikino.
+   - Added reference code patches handling.
+   - Added first reference code patch set.
+
 2010-09-26  Gibro Vacco  <gibrovacco@gmail.com>
 
 	 Semi-original revision brought to gitorius with some changes:

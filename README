@@ -18,12 +18,14 @@ It has been tested against (aka connecting with):
 
 and is roughly working. Some minor issues (e.g. suspicious "holes" receiving data from internet tables) must still be addressed and fixed. Performances are also far from being optimal.
 
-    * NOTE 1: before compiling the project you need to download g729 ITU-T specifications (with reference code) and set G729_PATH environment variable to point to a c_code folder, e.g.: 
+--- Notes on compilation ---
+
+* Before compiling the project you need to download g729 ITU-T specifications (with reference code) and set G729_PATH environment variable to point to a c_code folder, e.g.: 
 
 export G729_PATH=/home/gibrovacco/Soft/g729AnnexA/c_code
 
-    As an alternative, you can use the "--enable-refcode-download" configure option.
+As an alternative, you can use the "--enable-refcode-download" configure option.
 
-    * NOTE 2: prior compiling with GCC the makefiles coder.mak and decoder.mak (in the chosen ITU-T reference code folder) must be modified accordingly (see in the files themself for more hints). This step is automatically performed in case the reference code is downloaded with the "--enable-refcode-download" option.
+* Prior compiling with GCC the makefiles coder.mak and decoder.mak (in the chosen ITU-T reference code folder) must be modified accordingly (see in the files themself for more hints). This step is automatically performed in case the reference code is downloaded with the "--enable-refcode-download" option.
 
-
+* A set of optimisations on reference code is available under refcode/patches. Even though they've not been thoroughly tested, no issues have been found so fari and they provide a rough 50% improvement. They can be enabled at configuration time through the "--enable-apply-patches" configuration option. This works only if the "--enable-refcode-download" option has been given.
