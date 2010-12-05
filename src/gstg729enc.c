@@ -90,7 +90,7 @@ static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",
     );
 
 static const GstElementDetails g729enc_details =
-GST_ELEMENT_DETAILS ("g729enc",
+GST_ELEMENT_DETAILS ("G729 audio encoder",
     "Codec/Encoder/Audio",
     "Encodes audio in G729 format",
     "Gibrovacco <gibrovacco@gmail.com>");
