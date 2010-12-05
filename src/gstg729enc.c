@@ -66,9 +66,6 @@
 #include <gst/audio/audio.h>
 #include "gstg729enc.h"
 
-#include "typedef.h"
-#include "ld8a.h"
-
 GST_DEBUG_CATEGORY_STATIC (g729enc_debug);
 #define GST_CAT_DEFAULT g729enc_debug
 

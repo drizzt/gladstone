@@ -1,5 +1,7 @@
 #ifndef __GSTG729_COMMON__
 #define __GSTG729_COMMON__
+#include "typedef.h"
+#include "ld8a.h"
 
 #define SAMPLE_RATE 8000
 #define FRAME_DURATION 10

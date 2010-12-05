@@ -48,8 +48,6 @@
 #include "g729common.h"
 
 //ref code includes:
-#include "typedef.h"
-#include "ld8a.h"
 #include "basic_op.h"
 
 G_BEGIN_DECLS
