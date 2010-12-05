@@ -152,7 +152,7 @@ gst_g729_dec_class_init (GstG729DecClass * klass)
       "g729 decoding element");
 }
 
-//TODO: move elsewhere
+/* TODO: move elsewhere */
 Word16 bad_lsf = 0;
 
 static void
@@ -164,15 +164,26 @@ gst_g729_dec_reset (GstG729Dec * dec)
   dec->vad = 0;
 
   if (dec->state) {
-    //TODO: uninitialize decoder
+    /* TODO: uninitialize decoder */
     dec->state = NULL;
   }
 
-  //ref code specific
+  /* ref code specific */
   Init_Decod_ld8a();
   Init_Post_Filter();
   Init_Post_Process();
   Init_Dec_cng();
+
+  /*
+   * Reference code input data initialisation
+   * First word: synchronization
+   * Second word: size
+   * subsequent 80 words: 1 word per bit (0x007f->0 0x0081->1)
+   */
+  ((guchar*)dec->refcode_input)[0]=0x21;
+  ((guchar*)dec->refcode_input)[1]=0x6B;
+  ((guchar*)dec->refcode_input)[2]=0x50;
+  ((guchar*)dec->refcode_input)[3]=0x00;
 
   memset(dec->synth_buf,0,sizeof(dec->synth_buf));
   dec->synth = dec->synth_buf + M;
@@ -468,43 +479,34 @@ newseg_wrong_rate:
 
 static guint32 g729_decode(GstG729Dec * dec, guchar* g729_data, guchar* pcm_data)
 {
-  Word16  parameters[PRM_SIZE+2];             /* Synthesis parameters        */
-  Word16  serial[SERIAL_SIZE];          /* Serial stream               */
-  Word16  Az_dec[MP1*2];                /* Decoded Az for post-filter  */
-  Word16  T2[2];                        /* Pitch lag for 2 subframes   */
+  guint16  i;
 
-  Word16  i;
-
-  /*
-   * One (2-byte) synchronization word
-   * One (2-byte) size word
-   * 80 words (2-byte) containing 80 bits.
-   */
-  ((guchar*)serial)[0]=0x21;
-  ((guchar*)serial)[1]=0x6B;
-  ((guchar*)serial)[2]=0x50;
-  ((guchar*)serial)[3]=0x00;
   for(i=0;i<SERIAL_SIZE-2;i++){
-    ((guchar*)serial)[5+i*2]=0x00;
-    ((guchar*)serial)[4+i*2]=(g729_data[i/8]&(1<<(7-i%8)))!=0?0x81:0x7F;
+    ((guchar*)dec->refcode_input)[5+i*2]=0x00;
+    ((guchar*)dec->refcode_input)[4+i*2]=
+      (g729_data[i/8]&(1<<(7-i%8)))!=0?0x81:0x7F;
   }
 
-  bits2prm_ld8k( &serial[1], parameters);
+  bits2prm_ld8k( &dec->refcode_input[1], dec->parameters);
 
-  parameters[0] = 0;           /* No frame erasure */
-  if(serial[1] != 0) {
-   for (i=0; i < serial[1]; i++)
-     if (serial[i+2] == 0 ) parameters[0] = 1;  /* frame erased     */
-  }
-  else if(serial[0] != SYNC_WORD) parameters[0] = 1;
-
-  if(parameters[1] == 1) {
-    /* check parity and put 1 in parameters[5] if parity error */
-    parameters[5] = Check_Parity_Pitch(parameters[4], parameters[5]);
+  dec->parameters[0] = 0;           /* No frame erasure */
+  if(dec->refcode_input[1] != 0) {
+   for (i=0; i < dec->refcode_input[1]; i++)
+     if (dec->refcode_input[i+2] == 0 ) 
+       dec->parameters[0] = 1;  /* frame erased     */
+  } else {
+    if(dec->refcode_input[0] != SYNC_WORD) 
+      dec->parameters[0] = 1;
   }
 
-  Decod_ld8a(parameters, dec->synth, Az_dec, T2, &dec->vad);
-  Post_Filter(dec->synth, Az_dec, T2, dec->vad);        /* Post-filter */
+  if(dec->parameters[1] == 1) {
+    /* check parity and put 1 in dec->parameters[5] if parity error */
+    dec->parameters[5] = Check_Parity_Pitch(
+        dec->parameters[4], dec->parameters[5]);
+  }
+
+  Decod_ld8a(dec->parameters, dec->synth, dec->decoded_az, dec->pitch_lag, &dec->vad);
+  Post_Filter(dec->synth, dec->decoded_az, dec->pitch_lag, dec->vad);        /* Post-filter */
   Post_Process(dec->synth, L_FRAME);
 
   memcpy(pcm_data,dec->synth,RAW_FRAME_BYTES);
@@ -517,7 +519,7 @@ g729_dec_chain_parse_data (GstG729Dec * dec, GstBuffer * buf,
     GstClockTime timestamp, GstClockTime duration)
 {
   GstFlowReturn res = GST_FLOW_OK;
-  //TODO: need an adapter here
+  /* TODO: need an adapter here */
   gint i, fpp=GST_BUFFER_SIZE(buf)/G729_FRAME_BYTES;
   guint size;
   guint8 *data;
@@ -541,7 +543,7 @@ g729_dec_chain_parse_data (GstG729Dec * dec, GstBuffer * buf,
 
     /* copy timestamp */
   } else {
-    /* concealment data, pass NULL as the bits parameters */
+    /* concealment data, pass NULL as the bits dec->parameters */
     GST_DEBUG_OBJECT (dec, "creating concealment data");
   }
 

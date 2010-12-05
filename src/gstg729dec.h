@@ -84,8 +84,12 @@ struct _GstG729Dec {
   gint64                granulepos; /* -1 = needs to be set from current time */
 
   //ref code specific
-  Word16 synth_buf[L_FRAME+M];
-  Word16 *synth; 
+  guint16 parameters[PRM_SIZE+2];           /* parameters used for Synthesis */
+  guint16 refcode_input[SERIAL_SIZE];       /* decoder input stream          */
+  guint16 decoded_az[MP1*2];                /* post-filter specific Az       */
+  guint16 pitch_lag[2];                     /* pitch lag over 2 subframes    */
+  guint16 synth_buf[L_FRAME+M];
+  guint16 *synth; 
 
 };
 
