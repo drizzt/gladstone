@@ -554,34 +554,33 @@ gst_g729_enc_sinkevent (GstPad * pad, GstEvent * event)
   return res;
 }
 
-static gint g729_encode_frame (GstG729Enc* filter, gint16* in, gchar* out){
+static gint g729_encode_frame (GstG729Enc* enc, gint16* in, gchar* out){
   int i,j,index;
   extern Word16 *new_speech;
   gint ret = G729_FRAME_BYTES;
-  Word16 prm[PRM_SIZE+1],serial[SERIAL_SIZE];
 
   memcpy(new_speech,in,RAW_FRAME_BYTES);
 
   Pre_Process(new_speech,L_FRAME);
-  Coder_ld8a(prm, filter->frameno, filter->vad);
-  prm2bits_ld8k(prm, serial);
+  Coder_ld8a(enc->parameters, enc->frameno, enc->vad);
+  prm2bits_ld8k(enc->parameters, enc->encoder_output);
 
   memset (out,0x0,G729_FRAME_BYTES);
 
   for(i=0;i<10;i++){
     for(j=0;j<8;j++){
       index=2+(i*8)+j;
-      out[i]|=serial[index]==0x81?(1<<(7-j)):0;
+      out[i]|=enc->encoder_output[index]==0x81?(1<<(7-j)):0;
     }
   }
 
-  switch (prm[0]){
+  switch (enc->parameters[0]){
     case 2:
-      GST_DEBUG_OBJECT (filter, "SID detected");
+      GST_DEBUG_OBJECT (enc, "SID detected");
       ret = G729_SID_BYTES;
       break;
     case 0:
-      GST_DEBUG_OBJECT (filter, "No-transmission detected");
+      GST_DEBUG_OBJECT (enc, "No-transmission detected");
       ret = G729_SILENCE_BYTES;
       break;
   }
@@ -805,7 +804,7 @@ gst_g729_enc_change_state (GstElement * element, GstStateChange transition)
       enc->tags = gst_tag_list_new ();
       break;
     case GST_STATE_CHANGE_READY_TO_PAUSED:
-      //g729_bits_init (&enc->bits);
+      /* g729_bits_init (&enc->bits); */
       enc->frameno = 0;
       enc->frameno_out = 0;
       enc->samples_in = 0;

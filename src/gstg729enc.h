@@ -91,6 +91,10 @@ struct _GstG729Enc {
   GstClockTime     start_ts;
   GstClockTime     next_ts;
   guint64          granulepos_offset;
+
+  /* Reference code specific */
+  guint16 parameters[PRM_SIZE+1];
+  guint16 encoder_output[SERIAL_SIZE];
 };
 
 struct _GstG729EncClass {
