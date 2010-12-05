@@ -62,31 +62,19 @@ G_BEGIN_DECLS
   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_G729_ENC))
 
 
-typedef enum
-{
-  GST_G729_ENC_ANNEXA,
-} GstG729Mode;
-
 typedef struct _GstG729Enc GstG729Enc;
 typedef struct _GstG729EncClass GstG729EncClass;
 
 struct _GstG729Enc {
   GstElement            element;
 
-  /* pads */
   GstPad                *sinkpad,
                         *srcpad;
 
-  gint                  packet_count;
-  gint                  n_packets;
-
   void                  *state;
-  GstG729Mode          mode;
   GstAdapter            *adapter;
 
-  gboolean              vad;
-  gboolean              dtx;
-
+  guint16               vad;
   gboolean              setup;
 
   guint64               samples_in;
@@ -98,9 +86,6 @@ struct _GstG729Enc {
 
   guint64               frameno;
   guint64               frameno_out;
-
-  guint8                *comments;
-  gint                  comment_len;
 
   /* Timestamp and granulepos tracking */
   GstClockTime     start_ts;

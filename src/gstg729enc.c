@@ -95,39 +95,18 @@ GST_ELEMENT_DETAILS ("g729enc",
     "Encodes audio in G729 format",
     "Gibrovacco <gibrovacco@gmail.com>");
 
-#define DEFAULT_MODE            GST_G729_ENC_ANNEXA
 #define DEFAULT_VAD             FALSE
-#define DEFAULT_DTX             FALSE
 
 enum
 {
   PROP_0,
-  PROP_MODE,
   PROP_VAD,
-  PROP_DTX,
 };
-
-#define GST_TYPE_G729_ENC_MODE (gst_g729_enc_mode_get_type())
-static GType
-gst_g729_enc_mode_get_type (void)
-{
-  static GType g729_enc_mode_type = 0;
-  static const GEnumValue g729_enc_modes[] = {
-    {GST_G729_ENC_ANNEXA, "AnnexA", "annexa"},
-    {0, NULL, NULL},
-  };
-  if (G_UNLIKELY (g729_enc_mode_type == 0)) {
-    g729_enc_mode_type = g_enum_register_static ("GstG729EncMode",
-        g729_enc_modes);
-  }
-  return g729_enc_mode_type;
-}
 
 static void gst_g729_enc_finalize (GObject * object);
 
 static gboolean gst_g729_enc_sinkevent (GstPad * pad, GstEvent * event);
 static GstFlowReturn gst_g729_enc_chain (GstPad * pad, GstBuffer * buf);
-static gboolean gst_g729_enc_setup (GstG729Enc * enc);
 
 static void gst_g729_enc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
@@ -176,16 +155,9 @@ gst_g729_enc_class_init (GstG729EncClass * klass)
   gobject_class->set_property = gst_g729_enc_set_property;
   gobject_class->get_property = gst_g729_enc_get_property;
 
-  g_object_class_install_property (gobject_class, PROP_MODE,
-      g_param_spec_enum ("mode", "Mode", "The encoding mode",
-          GST_TYPE_G729_ENC_MODE, GST_G729_ENC_ANNEXA,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_VAD,
       g_param_spec_boolean ("vad", "VAD",
           "Enable voice activity detection", DEFAULT_VAD, G_PARAM_READWRITE));
-  g_object_class_install_property (G_OBJECT_CLASS (klass), PROP_DTX,
-      g_param_spec_boolean ("dtx", "DTX",
-          "Enable discontinuous transmission", DEFAULT_DTX, G_PARAM_READWRITE));
 
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_g729_enc_finalize);
 
@@ -213,13 +185,9 @@ gst_g729_enc_sink_setcaps (GstPad * pad, GstCaps * caps)
   GstStructure *structure;
 
   enc = GST_G729_ENC (GST_PAD_PARENT (pad));
-  enc->setup = FALSE;
-
   structure = gst_caps_get_structure (caps, 0);
 
-  gst_g729_enc_setup (enc);
-
-  return enc->setup;
+  return TRUE;
 }
 
 
@@ -517,16 +485,13 @@ gst_g729_enc_init (GstG729Enc * enc, GstG729EncClass * klass)
       GST_DEBUG_FUNCPTR (gst_g729_enc_get_query_types));
   gst_element_add_pad (GST_ELEMENT (enc), enc->srcpad);
 
-  enc->mode = DEFAULT_MODE;
   enc->vad = DEFAULT_VAD;
-  enc->dtx = DEFAULT_DTX;
-
-  enc->setup = FALSE;
 
   enc->adapter = gst_adapter_new ();
 
   Init_Pre_Process();
   Init_Coder_ld8a();
+  Init_Cod_cng();
 
 }
 
@@ -537,38 +502,6 @@ gst_g729_enc_set_last_msg (GstG729Enc * enc, const gchar * msg)
   enc->last_message = g_strdup (msg);
   GST_WARNING_OBJECT (enc, "%s", msg);
   g_object_notify (G_OBJECT (enc), "last-message");
-}
-
-static gboolean
-gst_g729_enc_setup (GstG729Enc * enc)
-{
-  enc->setup = FALSE;
-
-  switch (enc->mode) {
-    case GST_G729_ENC_ANNEXA:
-      GST_LOG_OBJECT (enc, "Annex A mode");
-    default:
-      break;
-  }
-
-  /*Initialize G729 encoder */
-
-  if (enc->vad) {
-    //TODO
-  }
-
-  if (enc->dtx) {
-    //TODO
-  }
-
-  if (enc->dtx && !enc->vad) {
-    gst_g729_enc_set_last_msg (enc,
-        "Warning: dtx is useless without vad, vbr or abr");
-  }
-
-  enc->setup = TRUE;
-
-  return TRUE;
 }
 
 /* push out the buffer and do internal bookkeeping */
@@ -627,12 +560,13 @@ gst_g729_enc_sinkevent (GstPad * pad, GstEvent * event)
 static gint g729_encode_frame (GstG729Enc* filter, gint16* in, gchar* out){
   int i,j,index;
   extern Word16 *new_speech;
-  Word16 prm[PRM_SIZE],serial[SERIAL_SIZE];
+  gint ret = G729_FRAME_BYTES;
+  Word16 prm[PRM_SIZE+1],serial[SERIAL_SIZE];
 
   memcpy(new_speech,in,RAW_FRAME_BYTES);
 
   Pre_Process(new_speech,L_FRAME);
-  Coder_ld8a(prm);
+  Coder_ld8a(prm, filter->frameno, filter->vad);
   prm2bits_ld8k(prm, serial);
 
   memset (out,0x0,G729_FRAME_BYTES);
@@ -644,10 +578,21 @@ static gint g729_encode_frame (GstG729Enc* filter, gint16* in, gchar* out){
     }
   }
 
-  return G729_FRAME_BYTES;
+  switch (prm[0]){
+    case 2:
+      GST_DEBUG_OBJECT (filter, "SID detected");
+      ret = G729_SID_BYTES;
+      break;
+    case 0:
+      GST_DEBUG_OBJECT (filter, "No-transmission detected");
+      ret = G729_SILENCE_BYTES;
+      break;
+  }
+
+  return ret;
 }
 
-static GstFlowReturn
+  static GstFlowReturn
 gst_g729_enc_encode (GstG729Enc * enc, gboolean flush)
 {
   GstFlowReturn ret = GST_FLOW_OK;
@@ -674,7 +619,12 @@ gst_g729_enc_encode (GstG729Enc * enc, gboolean flush)
     enc->samples_in += RAW_FRAME_SAMPLES;
 
 
-    enc->frameno++;
+    if (enc->frameno == 32767){
+      enc->frameno = 256;
+    } else {
+      enc->frameno++;
+    }
+
     enc->frameno_out++;
     f++;
 
@@ -685,23 +635,26 @@ gst_g729_enc_encode (GstG729Enc * enc, gboolean flush)
       goto done;
 
     out = g729_encode_frame (enc, data, (gchar *) GST_BUFFER_DATA (outbuf));
-
     g_free (data);
-    g_assert (out == G729_FRAME_BYTES);
 
-    GST_BUFFER_TIMESTAMP (outbuf) = ts + 100 * GST_MSECOND +
+    if(out != G729_SILENCE_BYTES){
+      GST_BUFFER_SIZE(outbuf) = out;
+
+      GST_BUFFER_TIMESTAMP (outbuf) = ts + 100 * GST_MSECOND +
         gst_util_uint64_scale_int ((f - 1) * RAW_FRAME_SAMPLES,
             GST_SECOND, SAMPLE_RATE);
-    GST_BUFFER_DURATION (outbuf) = gst_util_uint64_scale_int (RAW_FRAME_SAMPLES,
-        GST_SECOND, SAMPLE_RATE);
-    GST_BUFFER_OFFSET_END (outbuf) = enc->granulepos_offset +
+      GST_BUFFER_DURATION (outbuf) = gst_util_uint64_scale_int (RAW_FRAME_SAMPLES,
+          GST_SECOND, SAMPLE_RATE);
+      GST_BUFFER_OFFSET_END (outbuf) = enc->granulepos_offset +
         ((enc->frameno_out) * RAW_FRAME_SAMPLES);
-    GST_BUFFER_OFFSET (outbuf) =
+      GST_BUFFER_OFFSET (outbuf) =
         gst_util_uint64_scale_int (GST_BUFFER_OFFSET_END (outbuf), GST_SECOND,
-        SAMPLE_RATE);
+            SAMPLE_RATE);
 
-
-    ret = gst_g729_enc_push_buffer (enc, outbuf);
+      ret = gst_g729_enc_push_buffer (enc, outbuf);
+    } else {
+      gst_buffer_unref(outbuf);
+    }
 
     if ((GST_FLOW_OK != ret) && (GST_FLOW_NOT_LINKED != ret))
       goto done;
@@ -712,7 +665,7 @@ done:
   return ret;
 }
 
-static GstFlowReturn
+  static GstFlowReturn
 gst_g729_enc_chain (GstPad * pad, GstBuffer * buf)
 {
   GstG729Enc *enc;
@@ -720,16 +673,13 @@ gst_g729_enc_chain (GstPad * pad, GstBuffer * buf)
 
   enc = GST_G729_ENC (GST_PAD_PARENT (pad));
 
-  if (!enc->setup)
-    goto not_setup;
-
   /* Save the timestamp of the first buffer. This will be later
    * used as offset for all following buffers */
   if (enc->start_ts == GST_CLOCK_TIME_NONE) {
     if (GST_BUFFER_TIMESTAMP_IS_VALID (buf)) {
       enc->start_ts = GST_BUFFER_TIMESTAMP (buf);
       enc->granulepos_offset = gst_util_uint64_scale
-          (GST_BUFFER_TIMESTAMP (buf), SAMPLE_RATE, GST_SECOND);
+        (GST_BUFFER_TIMESTAMP (buf), SAMPLE_RATE, GST_SECOND);
     } else {
       enc->start_ts = 0;
       enc->granulepos_offset = 0;
@@ -766,7 +716,7 @@ gst_g729_enc_chain (GstPad * pad, GstBuffer * buf)
   if (enc->next_ts != GST_CLOCK_TIME_NONE
       && GST_BUFFER_TIMESTAMP_IS_VALID (buf)) {
     guint64 max_diff =
-        gst_util_uint64_scale (RAW_FRAME_SAMPLES, GST_SECOND, SAMPLE_RATE);
+      gst_util_uint64_scale (RAW_FRAME_SAMPLES, GST_SECOND, SAMPLE_RATE);
 
     if (GST_BUFFER_TIMESTAMP (buf) != enc->next_ts &&
         GST_BUFFER_TIMESTAMP (buf) - enc->next_ts > max_diff) {
@@ -779,7 +729,7 @@ gst_g729_enc_chain (GstPad * pad, GstBuffer * buf)
       enc->frameno_out = 0;
       enc->start_ts = GST_BUFFER_TIMESTAMP (buf);
       enc->granulepos_offset = gst_util_uint64_scale
-          (GST_BUFFER_TIMESTAMP (buf), SAMPLE_RATE, GST_SECOND);
+        (GST_BUFFER_TIMESTAMP (buf), SAMPLE_RATE, GST_SECOND);
     }
   }
 
@@ -808,19 +758,10 @@ done:
 
   return ret;
 
-  /* ERRORS */
-not_setup:
-  {
-    GST_ELEMENT_ERROR (enc, CORE, NEGOTIATION, (NULL),
-        ("encoder not initialized (input is not audio?)"));
-    ret = GST_FLOW_NOT_NEGOTIATED;
-    goto done;
-  }
-
 }
 
 
-static void
+  static void
 gst_g729_enc_get_property (GObject * object, guint prop_id, GValue * value,
     GParamSpec * pspec)
 {
@@ -829,14 +770,8 @@ gst_g729_enc_get_property (GObject * object, guint prop_id, GValue * value,
   enc = GST_G729_ENC (object);
 
   switch (prop_id) {
-    case PROP_MODE:
-      g_value_set_enum (value, enc->mode);
-      break;
     case PROP_VAD:
       g_value_set_boolean (value, enc->vad);
-      break;
-    case PROP_DTX:
-      g_value_set_boolean (value, enc->dtx);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -844,7 +779,7 @@ gst_g729_enc_get_property (GObject * object, guint prop_id, GValue * value,
   }
 }
 
-static void
+  static void
 gst_g729_enc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
@@ -853,14 +788,8 @@ gst_g729_enc_set_property (GObject * object, guint prop_id,
   enc = GST_G729_ENC (object);
 
   switch (prop_id) {
-    case PROP_MODE:
-      enc->mode = g_value_get_enum (value);
-      break;
     case PROP_VAD:
-      enc->vad = g_value_get_boolean (value);
-      break;
-    case PROP_DTX:
-      enc->dtx = g_value_get_boolean (value);
+      enc->vad = g_value_get_boolean (value)?1:0;
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -868,7 +797,7 @@ gst_g729_enc_set_property (GObject * object, guint prop_id,
   }
 }
 
-static GstStateChangeReturn
+  static GstStateChangeReturn
 gst_g729_enc_change_state (GstElement * element, GstStateChange transition)
 {
   GstG729Enc *enc = GST_G729_ENC (element);
@@ -901,9 +830,7 @@ gst_g729_enc_change_state (GstElement * element, GstStateChange transition)
     case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
       break;
     case GST_STATE_CHANGE_PAUSED_TO_READY:
-      enc->setup = FALSE;
       if (enc->state) {
-        //g729_encoder_destroy (enc->state);
         enc->state = NULL;
       }
       break;

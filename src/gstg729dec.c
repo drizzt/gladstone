@@ -152,12 +152,16 @@ gst_g729_dec_class_init (GstG729DecClass * klass)
       "g729 decoding element");
 }
 
+//TODO: move elsewhere
+Word16 bad_lsf = 0;
+
 static void
 gst_g729_dec_reset (GstG729Dec * dec)
 {
   gst_segment_init (&dec->segment, GST_FORMAT_UNDEFINED);
   dec->granulepos = -1;
   dec->packetno = 0;
+  dec->vad = 0;
 
   if (dec->state) {
     //TODO: uninitialize decoder
@@ -168,6 +172,7 @@ gst_g729_dec_reset (GstG729Dec * dec)
   Init_Decod_ld8a();
   Init_Post_Filter();
   Init_Post_Process();
+  Init_Dec_cng();
 
   memset(dec->synth_buf,0,sizeof(dec->synth_buf));
   dec->synth = dec->synth_buf + M;
@@ -463,12 +468,12 @@ newseg_wrong_rate:
 
 static guint32 g729_decode(GstG729Dec * dec, guchar* g729_data, guchar* pcm_data)
 {
-  Word16  parm[PRM_SIZE+1];             /* Synthesis parameters        */
+  Word16  parameters[PRM_SIZE+2];             /* Synthesis parameters        */
   Word16  serial[SERIAL_SIZE];          /* Serial stream               */
   Word16  Az_dec[MP1*2];                /* Decoded Az for post-filter  */
   Word16  T2[2];                        /* Pitch lag for 2 subframes   */
 
-  Word16  i, frame;
+  Word16  i;
 
   /*
    * One (2-byte) synchronization word
@@ -484,18 +489,22 @@ static guint32 g729_decode(GstG729Dec * dec, guchar* g729_data, guchar* pcm_data
     ((guchar*)serial)[4+i*2]=(g729_data[i/8]&(1<<(7-i%8)))!=0?0x81:0x7F;
   }
 
-  bits2prm_ld8k( &serial[2], &parm[1]);
+  bits2prm_ld8k( &serial[1], parameters);
 
-  parm[0] = 0;           /* No frame erasure */
-  for (i=2; i < SERIAL_SIZE; i++)
-    if (serial[i] == 0 ) parm[0] = 1; /* frame erased     */
+  parameters[0] = 0;           /* No frame erasure */
+  if(serial[1] != 0) {
+   for (i=0; i < serial[1]; i++)
+     if (serial[i+2] == 0 ) parameters[0] = 1;  /* frame erased     */
+  }
+  else if(serial[0] != SYNC_WORD) parameters[0] = 1;
 
-  /* check pitch parity and put 1 in parm[4] if parity error */
+  if(parameters[1] == 1) {
+    /* check parity and put 1 in parameters[5] if parity error */
+    parameters[5] = Check_Parity_Pitch(parameters[4], parameters[5]);
+  }
 
-  parm[4] = Check_Parity_Pitch(parm[3], parm[4]);
-
-  Decod_ld8a(parm, dec->synth, Az_dec, T2);
-  Post_Filter(dec->synth, Az_dec, T2);        /* Post-filter */
+  Decod_ld8a(parameters, dec->synth, Az_dec, T2, &dec->vad);
+  Post_Filter(dec->synth, Az_dec, T2, dec->vad);        /* Post-filter */
   Post_Process(dec->synth, L_FRAME);
 
   memcpy(pcm_data,dec->synth,RAW_FRAME_BYTES);
@@ -513,10 +522,6 @@ g729_dec_chain_parse_data (GstG729Dec * dec, GstBuffer * buf,
   guint size;
   guint8 *data;
 
-  if(fpp*G729_FRAME_BYTES!=GST_BUFFER_SIZE(buf)){
-    printf("throwing away %d bytes!\n",GST_BUFFER_SIZE(buf)-fpp*G729_FRAME_BYTES);
-  }
-
   if (timestamp != -1) {
     dec->segment.last_stop = timestamp;
     dec->granulepos = -1;
@@ -525,7 +530,6 @@ g729_dec_chain_parse_data (GstG729Dec * dec, GstBuffer * buf,
   if (buf) {
     data = GST_BUFFER_DATA (buf);
     size = GST_BUFFER_SIZE (buf);
-
 
     if (!GST_BUFFER_TIMESTAMP_IS_VALID (buf)
         && GST_BUFFER_OFFSET_END_IS_VALID (buf)) {
@@ -622,7 +626,7 @@ g729_dec_chain (GstPad * pad, GstBuffer * buf)
           gst_caps_unref (caps);
         }
       }
-      break;
+      /*pass through*/
     default:
       res =
         g729_dec_chain_parse_data (dec, buf, GST_BUFFER_TIMESTAMP (buf),

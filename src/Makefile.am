@@ -29,7 +29,14 @@ g729_ref_objs=\
 			  $(G729_PATH)/dec_ld8a.o\
 			  $(G729_PATH)/lspdec.o\
 			  $(G729_PATH)/post_pro.o\
-			  $(G729_PATH)/postfilt.o
+			  $(G729_PATH)/postfilt.o\
+			  $(G729_PATH)/calcexc.o\
+			  $(G729_PATH)/qsidlsf.o\
+			  $(G729_PATH)/dec_sid.o\
+			  $(G729_PATH)/qsidgain.o\
+			  $(G729_PATH)/tab_dtx.o\
+			  $(G729_PATH)/dtx.o\
+			  $(G729_PATH)/vad.o
 
 plugin_LTLIBRARIES = libgstg729.la 
 

@@ -76,6 +76,7 @@ struct _GstG729Dec {
   GstPad                *srcpad;
 
   void                  *state;
+  guint16               vad;
 
   guint64               packetno;
 
@@ -83,7 +84,7 @@ struct _GstG729Dec {
   gint64                granulepos; /* -1 = needs to be set from current time */
 
   //ref code specific
-  Word16 synth_buf[SERIAL_SIZE+M];
+  Word16 synth_buf[L_FRAME+M];
   Word16 *synth; 
 
 };
