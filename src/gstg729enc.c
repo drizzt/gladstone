@@ -575,11 +575,11 @@ static gint g729_encode_frame (GstG729Enc* enc, gint16* in, gchar* out){
   }
 
   switch (enc->parameters[0]){
-    case 2:
+    case G729_SID_FRAME:
       GST_DEBUG_OBJECT (enc, "SID detected");
       ret = G729_SID_BYTES;
       break;
-    case 0:
+    case G729_SILENCE_FRAME:
       GST_DEBUG_OBJECT (enc, "No-transmission detected");
       ret = G729_SILENCE_BYTES;
       break;
