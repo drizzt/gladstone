@@ -477,14 +477,33 @@ newseg_wrong_rate:
   }
 }
 
-static guint32 g729_decode(GstG729Dec * dec, guchar* g729_data, guchar* pcm_data)
+static guint32 g729_decode(GstG729Dec * dec, GstBuffer* inbuf, GstBuffer* outbuf)
 {
   guint16  i;
+  gchar *g729_data = GST_BUFFER_DATA(inbuf);
+  gchar *pcm_data = GST_BUFFER_DATA(outbuf);
 
   for(i=0;i<SERIAL_SIZE-2;i++){
     ((guchar*)dec->refcode_input)[5+i*2]=0x00;
     ((guchar*)dec->refcode_input)[4+i*2]=
       (g729_data[i/8]&(1<<(7-i%8)))!=0?0x81:0x7F;
+  }
+
+  switch(GST_BUFFER_SIZE(inbuf)){
+    case G729_SID_BYTES:
+      dec->parameters[1] = G729_SID_FRAME;
+      ((guchar*)dec->refcode_input)[2]=0x10;
+      GST_DEBUG_OBJECT(dec, "SID frame");
+      break;
+    case G729_SILENCE_BYTES:
+      dec->parameters[1] = G729_SILENCE_FRAME;
+      ((guchar*)dec->refcode_input)[2]=0x00;
+      GST_DEBUG_OBJECT(dec, "silence frame");
+      break;
+    case G729_FRAME_BYTES:
+      dec->parameters[1] = G729_SPEECH_FRAME;
+      ((guchar*)dec->refcode_input)[2]=0x50;
+      break;
   }
 
   bits2prm_ld8k( &dec->refcode_input[1], dec->parameters);
@@ -499,14 +518,16 @@ static guint32 g729_decode(GstG729Dec * dec, guchar* g729_data, guchar* pcm_data
       dec->parameters[0] = 1;
   }
 
+
   if(dec->parameters[1] == 1) {
     /* check parity and put 1 in dec->parameters[5] if parity error */
     dec->parameters[5] = Check_Parity_Pitch(
         dec->parameters[4], dec->parameters[5]);
   }
 
-  Decod_ld8a(dec->parameters, dec->synth, dec->decoded_az, dec->pitch_lag, &dec->vad);
-  Post_Filter(dec->synth, dec->decoded_az, dec->pitch_lag, dec->vad);        /* Post-filter */
+  Decod_ld8a(
+      dec->parameters, dec->synth, dec->decoded_az, dec->pitch_lag, &dec->vad);
+  Post_Filter(dec->synth, dec->decoded_az, dec->pitch_lag, dec->vad);
   Post_Process(dec->synth, L_FRAME);
 
   memcpy(pcm_data,dec->synth,RAW_FRAME_BYTES);
@@ -519,83 +540,70 @@ g729_dec_chain_parse_data (GstG729Dec * dec, GstBuffer * buf,
     GstClockTime timestamp, GstClockTime duration)
 {
   GstFlowReturn res = GST_FLOW_OK;
-  /* TODO: need an adapter here */
-  gint i, fpp=GST_BUFFER_SIZE(buf)/G729_FRAME_BYTES;
+  /* TODO: need a buffer list here */
   guint size;
-  guint8 *data;
+  GstBuffer *outbuf;
 
   if (timestamp != -1) {
     dec->segment.last_stop = timestamp;
     dec->granulepos = -1;
   }
 
-  if (buf) {
-    data = GST_BUFFER_DATA (buf);
-    size = GST_BUFFER_SIZE (buf);
-
-    if (!GST_BUFFER_TIMESTAMP_IS_VALID (buf)
-        && GST_BUFFER_OFFSET_END_IS_VALID (buf)) {
-      dec->granulepos = GST_BUFFER_OFFSET_END (buf);
-      GST_DEBUG_OBJECT (dec,
-          "Taking granulepos from upstream: %" G_GUINT64_FORMAT,
-          dec->granulepos);
-    }
-
-    /* copy timestamp */
-  } else {
-    /* concealment data, pass NULL as the bits dec->parameters */
-    GST_DEBUG_OBJECT (dec, "creating concealment data");
+  if (!buf) {
+    GST_ERROR_OBJECT (dec, "got NULL buffer");
+    return GST_FLOW_ERROR;
   }
 
+  size = GST_BUFFER_SIZE (buf);
 
-  /* now decode each frame */
-  for (i = 0; i < fpp; i++) {
-    GstBuffer *outbuf;
-    guint8 *out_data;
-
-    res = gst_pad_alloc_buffer_and_set_caps (dec->srcpad,
-        GST_BUFFER_OFFSET_NONE, RAW_FRAME_BYTES,
-        GST_PAD_CAPS (dec->srcpad), &outbuf);
-
-    if (res != GST_FLOW_OK) {
-      GST_DEBUG_OBJECT (dec, "buf alloc flow: %s", gst_flow_get_name (res));
-      return res;
-    }
-
-    out_data = GST_BUFFER_DATA (outbuf);
-
-    res = g729_decode (dec, data+i*G729_FRAME_BYTES, out_data);
-
-    if (dec->granulepos == -1) {
-      if (dec->segment.format != GST_FORMAT_TIME) {
-        GST_WARNING_OBJECT (dec, "segment not initialized or not TIME format");
-        dec->granulepos = RAW_FRAME_SAMPLES;
-      } else {
-        dec->granulepos = dec->segment.last_stop * SAMPLE_RATE / GST_SECOND + RAW_FRAME_SAMPLES;
-      }
-      GST_DEBUG_OBJECT (dec, "granulepos=%" G_GINT64_FORMAT, dec->granulepos);
-    }
-
-    GST_BUFFER_OFFSET (outbuf) = dec->granulepos - RAW_FRAME_SAMPLES;
-    GST_BUFFER_OFFSET_END (outbuf) = dec->granulepos;
-    GST_BUFFER_TIMESTAMP (outbuf) = timestamp + 100 * GST_MSECOND;
-    GST_BUFFER_DURATION (outbuf) = 10 * GST_MSECOND;
-
-    dec->granulepos += RAW_FRAME_SAMPLES;
-    dec->segment.last_stop = GST_BUFFER_TIMESTAMP (outbuf);
-
-    GST_LOG_OBJECT (dec, "pushing buffer with ts=%" GST_TIME_FORMAT ", dur=%"
-        GST_TIME_FORMAT, GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (outbuf)),
-        GST_TIME_ARGS (GST_BUFFER_DURATION (outbuf)));
-
-    res = gst_pad_push (dec->srcpad, outbuf);
-
-    if (res != GST_FLOW_OK) {
-      GST_DEBUG_OBJECT (dec, "flow: %s", gst_flow_get_name (res));
-      break;
-    }
-    timestamp += GST_BUFFER_DURATION (outbuf);
+  if (
+      size != G729_FRAME_BYTES &&
+      size != G729_SID_BYTES &&
+      size != G729_SILENCE_BYTES)
+  {
+    GST_ERROR_OBJECT (dec, "wrong buffer size: %d", size);
+    return GST_FLOW_ERROR;
   }
+
+  res = gst_pad_alloc_buffer_and_set_caps (dec->srcpad,
+      GST_BUFFER_OFFSET_NONE, RAW_FRAME_BYTES,
+      GST_PAD_CAPS (dec->srcpad), &outbuf);
+
+  if (res != GST_FLOW_OK) {
+    GST_DEBUG_OBJECT (dec, "buf alloc flow: %s", gst_flow_get_name (res));
+    return res;
+  }
+
+  res = g729_decode (dec, buf, outbuf);
+
+  if (dec->granulepos == -1) {
+    if (dec->segment.format != GST_FORMAT_TIME) {
+      GST_WARNING_OBJECT (dec, "segment not initialized or not TIME format");
+      dec->granulepos = RAW_FRAME_SAMPLES;
+    } else {
+      dec->granulepos = dec->segment.last_stop * SAMPLE_RATE / GST_SECOND + RAW_FRAME_SAMPLES;
+    }
+    GST_DEBUG_OBJECT (dec, "granulepos=%" G_GINT64_FORMAT, dec->granulepos);
+  }
+
+  GST_BUFFER_OFFSET (outbuf) = dec->granulepos - RAW_FRAME_SAMPLES;
+  GST_BUFFER_OFFSET_END (outbuf) = dec->granulepos;
+  GST_BUFFER_TIMESTAMP (outbuf) = timestamp + 100 * GST_MSECOND;
+  GST_BUFFER_DURATION (outbuf) = 10 * GST_MSECOND;
+
+  dec->granulepos += RAW_FRAME_SAMPLES;
+  dec->segment.last_stop = GST_BUFFER_TIMESTAMP (outbuf);
+
+  GST_LOG_OBJECT (dec, "pushing buffer with ts=%" GST_TIME_FORMAT ", dur=%"
+      GST_TIME_FORMAT, GST_TIME_ARGS (GST_BUFFER_TIMESTAMP (outbuf)),
+      GST_TIME_ARGS (GST_BUFFER_DURATION (outbuf)));
+
+  res = gst_pad_push (dec->srcpad, outbuf);
+
+  if (res != GST_FLOW_OK) {
+    GST_DEBUG_OBJECT (dec, "flow: %s", gst_flow_get_name (res));
+  }
+  timestamp += GST_BUFFER_DURATION (outbuf);
 
   return res;
 }
@@ -607,34 +615,28 @@ g729_dec_chain (GstPad * pad, GstBuffer * buf)
   GstG729Dec *dec;
 
   dec = GST_G729_DEC (gst_pad_get_parent (pad));
-  switch (dec->packetno) {
-    case 0:
-      {
-        GstCaps *caps;
-        caps = gst_caps_new_simple (
-            "audio/x-raw-int",
-            "rate", G_TYPE_INT, SAMPLE_RATE,
-            "channels", G_TYPE_INT, 1,
-            "signed", G_TYPE_BOOLEAN, TRUE,
-            "endianness", G_TYPE_INT, G_BYTE_ORDER,
-            "width", G_TYPE_INT, 16, "depth", G_TYPE_INT, 16, NULL);
+  if (!dec->packetno) {
+    GstCaps *caps;
+    caps = gst_caps_new_simple (
+        "audio/x-raw-int",
+        "rate", G_TYPE_INT, SAMPLE_RATE,
+        "channels", G_TYPE_INT, 1,
+        "signed", G_TYPE_BOOLEAN, TRUE,
+        "endianness", G_TYPE_INT, G_BYTE_ORDER,
+        "width", G_TYPE_INT, 16, "depth", G_TYPE_INT, 16, NULL);
 
-        if(!gst_pad_set_caps (dec->srcpad, caps)){
-          GST_ELEMENT_ERROR (GST_ELEMENT (dec), STREAM, DECODE,
-              (NULL), ("couldn't negotiate format"));
-          res=GST_FLOW_NOT_NEGOTIATED;
-        }else{
-          res=GST_FLOW_OK;
-          gst_caps_unref (caps);
-        }
-      }
-      /*pass through*/
-    default:
-      res =
-        g729_dec_chain_parse_data (dec, buf, GST_BUFFER_TIMESTAMP (buf),
-            GST_BUFFER_DURATION (buf));
-      break;
+    if(!gst_pad_set_caps (dec->srcpad, caps)){
+      GST_ELEMENT_ERROR (GST_ELEMENT (dec), STREAM, DECODE,
+          (NULL), ("couldn't negotiate format"));
+      res=GST_FLOW_NOT_NEGOTIATED;
+    }else{
+      res=GST_FLOW_OK;
+      gst_caps_unref (caps);
+    }
   }
+  res =
+    g729_dec_chain_parse_data (dec, buf, GST_BUFFER_TIMESTAMP (buf),
+      GST_BUFFER_DURATION (buf));
 
   dec->packetno++;
 

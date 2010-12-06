@@ -1,5 +1,12 @@
 #ifndef __GSTG729_COMMON__
 #define __GSTG729_COMMON__
+
+typedef enum {
+  G729_SILENCE_FRAME,
+  G729_SPEECH_FRAME,
+  G729_SID_FRAME
+} frame_modes_param;
+
 #include "typedef.h"
 #include "ld8a.h"
 
