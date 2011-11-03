@@ -1,62 +1,53 @@
 # plugindir is set in configure
-g729_ref_objs=\
-			  $(G729_PATH)/acelp_ca.o\
-			  $(G729_PATH)/basic_op.o\
-			  $(G729_PATH)/bits.o\
-			  $(G729_PATH)/cod_ld8a.o\
-			  $(G729_PATH)/coder.o\
-			  $(G729_PATH)/dspfunc.o\
-			  $(G729_PATH)/filter.o\
-			  $(G729_PATH)/gainpred.o\
-			  $(G729_PATH)/lpc.o\
-			  $(G729_PATH)/lpcfunc.o\
-			  $(G729_PATH)/lspgetq.o\
-			  $(G729_PATH)/oper_32b.o\
-			  $(G729_PATH)/p_parity.o\
-			  $(G729_PATH)/pitch_a.o\
-			  $(G729_PATH)/pre_proc.o\
-			  $(G729_PATH)/pred_lt3.o\
-			  $(G729_PATH)/qua_gain.o\
-			  $(G729_PATH)/qua_lsp.o\
-			  $(G729_PATH)/tab_ld8a.o\
-			  $(G729_PATH)/util.o\
-			  $(G729_PATH)/taming.o\
-			  $(G729_PATH)/cor_func.o\
-			  $(G729_PATH)/decoder.o\
-			  $(G729_PATH)/de_acelp.o\
-			  $(G729_PATH)/dec_gain.o\
-			  $(G729_PATH)/dec_lag3.o\
-			  $(G729_PATH)/dec_ld8a.o\
-			  $(G729_PATH)/lspdec.o\
-			  $(G729_PATH)/post_pro.o\
-			  $(G729_PATH)/postfilt.o\
-			  $(G729_PATH)/calcexc.o\
-			  $(G729_PATH)/qsidlsf.o\
-			  $(G729_PATH)/dec_sid.o\
-			  $(G729_PATH)/qsidgain.o\
-			  $(G729_PATH)/tab_dtx.o\
-			  $(G729_PATH)/dtx.o\
-			  $(G729_PATH)/vad.o
+g729_ref_srcs=\
+			  $(G729_PATH)/acelp_ca.c\
+			  $(G729_PATH)/basic_op.c\
+			  $(G729_PATH)/bits.c\
+			  $(G729_PATH)/cod_ld8a.c\
+			  $(G729_PATH)/dspfunc.c\
+			  $(G729_PATH)/filter.c\
+			  $(G729_PATH)/gainpred.c\
+			  $(G729_PATH)/lpc.c\
+			  $(G729_PATH)/lpcfunc.c\
+			  $(G729_PATH)/lspgetq.c\
+			  $(G729_PATH)/oper_32b.c\
+			  $(G729_PATH)/p_parity.c\
+			  $(G729_PATH)/pitch_a.c\
+			  $(G729_PATH)/pre_proc.c\
+			  $(G729_PATH)/pred_lt3.c\
+			  $(G729_PATH)/qua_gain.c\
+			  $(G729_PATH)/qua_lsp.c\
+			  $(G729_PATH)/tab_ld8a.c\
+			  $(G729_PATH)/util.c\
+			  $(G729_PATH)/taming.c\
+			  $(G729_PATH)/cor_func.c\
+			  $(G729_PATH)/de_acelp.c\
+			  $(G729_PATH)/dec_gain.c\
+			  $(G729_PATH)/dec_lag3.c\
+			  $(G729_PATH)/dec_ld8a.c\
+			  $(G729_PATH)/lspdec.c\
+			  $(G729_PATH)/post_pro.c\
+			  $(G729_PATH)/postfilt.c\
+			  $(G729_PATH)/calcexc.c\
+			  $(G729_PATH)/qsidlsf.c\
+			  $(G729_PATH)/dec_sid.c\
+			  $(G729_PATH)/qsidgain.c\
+			  $(G729_PATH)/tab_dtx.c\
+			  $(G729_PATH)/dtx.c\
+			  $(G729_PATH)/vad.c
 
 plugin_LTLIBRARIES = libgstg729.la 
 
 # sources used to compile this plug-in
-libgstg729_la_SOURCES = gstg729plugin.c gstg729enc.c gstg729dec.c 
+libgstg729_la_SOURCES = gstg729plugin.c gstg729enc.c gstg729dec.c $(g729_ref_srcs)
 
 # flags used to compile this plugin
 # add other _CFLAGS and _LIBS as needed
 libgstg729_la_CFLAGS = $(GST_CFLAGS) $(GST_BASE_CFLAGS) -I$(G729_PATH)
-libgstg729_la_LIBADD = $(GST_LIBS) $(GST_BASE_LIBS) libg729_ref.a
+libgstg729_la_LIBADD = $(GST_LIBS) $(GST_BASE_LIBS)
 
 libgstg729_la_LDFLAGS = $(GST_PLUGIN_LDFLAGS) -L$(G729_PATH)
 libgstg729_la_LIBTOOLFLAGS = --tag=disable-static
 
 # headers we need but don't want installed
 noinst_HEADERS = gstg729enc.h gstg729dec.h g729common.h
-
-$(g729_ref_objs) : $(G729_PATH)/coder.mak $(G729_PATH)/decoder.mak
-	make -C $(G729_PATH) -f coder.mak
-	make -C $(G729_PATH) -f decoder.mak
-
-libg729_ref.a : $(g729_ref_objs)
-	$(AR) r libg729_ref.a $(g729_ref_objs) 
