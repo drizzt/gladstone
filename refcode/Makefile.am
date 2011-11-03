@@ -14,7 +14,7 @@ patches.stamp : $(target_makefile)
 endif
 
 clean:
-	rm -rf Soft G729E.*
+	rm -rf Soft G729E.* patches.stamp
 
 if APPLY_PATCHES
 all : patches.stamp

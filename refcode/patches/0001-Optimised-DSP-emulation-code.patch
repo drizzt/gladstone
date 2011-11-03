@@ -1,7 +1,7 @@
-diff --git Soft/g729AnnexA/c_codeBA/basic_op.c Soft/g729AnnexA/c_codeBA/basic_op.c
+diff --git Soft/g729AnnexB/c_codeBA/basic_op.c Soft/g729AnnexB/c_codeBA/basic_op.c
 index 970b4b1..a089009 100644
---- Soft/g729AnnexA/c_codeBA/basic_op.c
-+++ Soft/g729AnnexA/c_codeBA/basic_op.c
+--- Soft/g729AnnexB/c_codeBA/basic_op.c
++++ Soft/g729AnnexB/c_codeBA/basic_op.c
 @@ -39,6 +39,7 @@ Flag Carry =0;
   |___________________________________________________________________________|
  */
@@ -15,10 +15,10 @@ index 970b4b1..a089009 100644
    }
  
 +#endif
-diff --git Soft/g729AnnexA/c_codeBA/basic_op.h Soft/g729AnnexA/c_codeBA/basic_op.h
+diff --git Soft/g729AnnexB/c_codeBA/basic_op.h Soft/g729AnnexB/c_codeBA/basic_op.h
 index fa88f01..362c1bf 100644
---- Soft/g729AnnexA/c_codeBA/basic_op.h
-+++ Soft/g729AnnexA/c_codeBA/basic_op.h
+--- Soft/g729AnnexB/c_codeBA/basic_op.h
++++ Soft/g729AnnexB/c_codeBA/basic_op.h
 @@ -13,6 +13,7 @@ extern Flag Carry;
  #define MAX_16 (Word16)0x7fff
  #define MIN_16 (Word16)0x8000
@@ -261,10 +261,10 @@ index fa88f01..362c1bf 100644
 +}
  
 +#endif
-diff --git Soft/g729AnnexA/c_codeBA/dspfunc.c Soft/g729AnnexA/c_codeBA/dspfunc.c
+diff --git Soft/g729AnnexB/c_codeBA/dspfunc.c Soft/g729AnnexB/c_codeBA/dspfunc.c
 index 53c4f50..9fc9e5c 100644
---- Soft/g729AnnexA/c_codeBA/dspfunc.c
-+++ Soft/g729AnnexA/c_codeBA/dspfunc.c
+--- Soft/g729AnnexB/c_codeBA/dspfunc.c
++++ Soft/g729AnnexB/c_codeBA/dspfunc.c
 @@ -14,6 +14,8 @@
  #include "ld8a.h"
  #include "tab_ld8a.h"
