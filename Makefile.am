@@ -1,3 +1,4 @@
+ACLOCAL_AMFLAGS = -I m4
 EXTRA_DIST = autogen.sh gst-autogen.sh
 
 if REFCODE_DOWNLOAD
