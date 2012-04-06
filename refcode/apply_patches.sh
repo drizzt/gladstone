@@ -1,3 +1,5 @@
+#!/bin/sh
+
 if [ -f patches.stamp ]; then
   exit 0
 fi
