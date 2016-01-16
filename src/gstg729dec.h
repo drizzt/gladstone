@@ -45,6 +45,7 @@
 #define __GST_G729_DEC_H__
 
 #include <gst/gst.h>
+#include <gst/audio/audio.h>
 #include "g729common.h"
 
 //ref code includes:
@@ -67,11 +68,7 @@ typedef struct _GstG729Dec GstG729Dec;
 typedef struct _GstG729DecClass GstG729DecClass;
 
 struct _GstG729Dec {
-  GstElement            element;
-
-  /* pads */
-  GstPad                *sinkpad;
-  GstPad                *srcpad;
+  GstAudioDecoder       parent;
 
   void                  *state;
   guint16               vad;
@@ -92,7 +89,7 @@ struct _GstG729Dec {
 };
 
 struct _GstG729DecClass {
-  GstElementClass parent_class;
+  GstAudioDecoderClass parent_class;
 };
 
 GType gst_g729_dec_get_type (void);

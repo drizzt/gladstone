@@ -73,7 +73,7 @@ plugin_init (GstPlugin * plugin)
 GST_PLUGIN_DEFINE (
     GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
-    "g729",
+    g729,
     "G729 plugin library",
     plugin_init, 
     VERSION, 
