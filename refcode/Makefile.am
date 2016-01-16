@@ -1,4 +1,4 @@
-ARCH_URI = 'http://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.729-200701-I!!SOFT-ZST-E&type=items'
+ARCH_URI = 'https://www.itu.int/rec/dologin_pub.asp?lang=e&id=T-REC-G.729-201206-I!!SOFT-ZST-E&type=items'
 target_makefile = $(G729_PATH)decoder.mak
 
 $(target_makefile) : arch.zip

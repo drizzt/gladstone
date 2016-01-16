@@ -28,7 +28,7 @@ AC_ARG_WITH(refcode-prefix,
   AC_HELP_STRING([--with-refcode-prefix=PFX],
                  [prefix where reference code is installed, if different from refspec]),
                  G729_PATH="$withval", 
-                 G729_PATH="$PWD/refcode/Soft/g729AnnexB/c_codeBA/")
+                 G729_PATH="$PWD/refcode/Software/G729_Release3/g729AnnexB/c_codeBA/")
 AC_SUBST(G729_PATH)
 
 AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
