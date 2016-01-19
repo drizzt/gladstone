@@ -1,9 +1,9 @@
 AC_INIT
 
 dnl versions of gstreamer and plugins-base
-GST_MAJORMINOR=0.10
-GST_REQUIRED=0.10.0
-GSTPB_REQUIRED=0.10.0
+GST_MAJORMINOR=1.0
+GST_REQUIRED=1.0
+GSTPB_REQUIRED=1.0
 
 dnl fill in your package name and version here
 dnl the fourth (nano) number should be 0 for a release, 1 for CVS,
@@ -11,7 +11,7 @@ dnl and 2... for a prerelease
 
 dnl when going to/from release please set the nano correctly !
 dnl releases only do Wall, cvs and prerelease does Werror too
-AS_VERSION(gst-plugin, GST_PLUGIN_VERSION, 0, 10, 0, 1,
+AS_VERSION(gst-plugin, GST_PLUGIN_VERSION, 1, 0, 0, 1,
     GST_PLUGIN_CVS="no", GST_PLUGIN_CVS="yes")
 
 dnl AM_MAINTAINER_MODE provides the option to enable maintainer mode
@@ -28,7 +28,7 @@ AC_ARG_WITH(refcode-prefix,
   AC_HELP_STRING([--with-refcode-prefix=PFX],
                  [prefix where reference code is installed, if different from refspec]),
                  G729_PATH="$withval", 
-                 G729_PATH="$PWD/refcode/Soft/g729AnnexB/c_codeBA/")
+                 G729_PATH="$PWD/refcode/Software/G729_Release3/g729AnnexB/c_codeBA/")
 AC_SUBST(G729_PATH)
 
 AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
@@ -114,21 +114,6 @@ fi
 dnl make _CFLAGS and _LIBS available
 AC_SUBST(GSTPB_BASE_CFLAGS)
 AC_SUBST(GSTPB_BASE_LIBS)
-
-dnl If we need them, we can also use the gstreamer-controller libraries
-PKG_CHECK_MODULES(GSTCTRL,
-                  gstreamer-controller-$GST_MAJORMINOR >= $GSTPB_REQUIRED,
-                  HAVE_GSTCTRL=yes, HAVE_GSTCTRL=no)
-
-dnl Give a warning if we don't have gstreamer-controller
-dnl you can turn this into an error if you need them
-if test "x$HAVE_GSTCTRL" = "xno"; then
-  AC_MSG_NOTICE(no GStreamer Controller libraries found (gstreamer-controller-$GST_MAJORMINOR))
-fi
-
-dnl make _CFLAGS and _LIBS available
-AC_SUBST(GSTCTRL_CFLAGS)
-AC_SUBST(GSTCTRL_LIBS)
 
 dnl set the plugindir where plugins should be installed
 if test "x${prefix}" = "x$HOME"; then

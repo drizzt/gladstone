@@ -45,7 +45,7 @@
 
 
 #include <gst/gst.h>
-#include <gst/base/gstadapter.h>
+#include <gst/audio/audio.h>
 #include "g729common.h"
 
 G_BEGIN_DECLS
@@ -66,31 +66,10 @@ typedef struct _GstG729Enc GstG729Enc;
 typedef struct _GstG729EncClass GstG729EncClass;
 
 struct _GstG729Enc {
-  GstElement            element;
-
-  GstPad                *sinkpad,
-                        *srcpad;
-
-  void                  *state;
-  GstAdapter            *adapter;
+  GstAudioEncoder       parent;
 
   guint16               vad;
-  gboolean              setup;
-
-  guint64               samples_in;
-  guint64               bytes_out;
-
-  GstTagList            *tags;
-
-  gchar                 *last_message;
-
-  guint64               frameno;
-  guint64               frameno_out;
-
-  /* Timestamp and granulepos tracking */
-  GstClockTime     start_ts;
-  GstClockTime     next_ts;
-  guint64          granulepos_offset;
+  guint16               frameno;
 
   /* Reference code specific */
   guint16 parameters[PRM_SIZE+1];
@@ -98,10 +77,7 @@ struct _GstG729Enc {
 };
 
 struct _GstG729EncClass {
-  GstElementClass parent_class;
-
-  /* signals */
-  void (*frame_encoded) (GstElement *element);
+  GstAudioEncoderClass parent_class;
 };
 
 GType gst_g729_enc_get_type (void);
