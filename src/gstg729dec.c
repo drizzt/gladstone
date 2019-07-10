@@ -1,6 +1,6 @@
 /* GladSToNe g729 Decoder
  * Copyright (C) <2009> Gibrovacco <gibrovacco@gmail.com>
- * Copyright (C) 2016 Sebastian Dröge <sebastian@centricular.com>
+ * Copyright (C) 2016,2019 Sebastian Dröge <sebastian@centricular.com>
  *
  * It is possible to redistribute this code using the LGPL license:
  *
@@ -243,26 +243,46 @@ gst_g729_dec_handle_frame (GstAudioDecoder * adec, GstBuffer * buf)
   guint size;
   GstMapInfo imap, omap;
   GstBuffer *outbuf;
+  guint i, num_frames;
+  const guint8 *in_ptr;
+  gint16 *out_ptr;
 
   size = gst_buffer_get_size (buf);
 
-  if (
-      size != G729_FRAME_BYTES &&
-      size != G729_SID_BYTES &&
-      size != G729_SILENCE_BYTES)
+  /* G729 frames are either 10 or 2 bytes, and we allow multiple 10 bytes
+   * frames at once followed by up to a single 2 byte frame.
+   * Also allow 0 byte silence frames. */
+  if (size % G729_FRAME_BYTES != 0 && size % G729_FRAME_BYTES != G729_SID_BYTES)
   {
     GST_ERROR_OBJECT (dec, "wrong buffer size: %d", size);
     return GST_FLOW_ERROR;
   }
 
-  outbuf = gst_audio_decoder_allocate_output_buffer (GST_AUDIO_DECODER (dec), RAW_FRAME_BYTES);
+  num_frames = size / G729_FRAME_BYTES;
+  if (size % G729_FRAME_BYTES == G729_SID_BYTES)
+    num_frames += 1;
+  if (size == 0)
+    num_frames = 1;
+
+  outbuf = gst_audio_decoder_allocate_output_buffer (GST_AUDIO_DECODER (dec), num_frames * RAW_FRAME_BYTES);
   if (!outbuf)
     return GST_FLOW_OK;
 
   gst_buffer_map (buf, &imap, GST_MAP_READ);
   gst_buffer_map (outbuf, &omap, GST_MAP_READ);
 
-  g729_decode (dec, imap.data, imap.size, (gint16 *) omap.data);
+  in_ptr = imap.data;
+  out_ptr = (gint16 *) omap.data;
+
+  for (i = 0; i < num_frames; i++) {
+    /* Consider every frame except for the last one as a normal frame. The
+     * last frame can be either of the three frame types */
+    g729_decode (dec, in_ptr, size >= G729_FRAME_BYTES ? G729_FRAME_BYTES : size, out_ptr);
+
+    in_ptr += G729_FRAME_BYTES;
+    size -= G729_FRAME_BYTES;
+    out_ptr += RAW_FRAME_BYTES / 2;
+  }
 
   gst_buffer_unmap (buf, &imap);
   gst_buffer_unmap (outbuf, &omap);
