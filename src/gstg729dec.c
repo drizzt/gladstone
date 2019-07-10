@@ -260,9 +260,11 @@ gst_g729_dec_handle_frame (GstAudioDecoder * adec, GstBuffer * buf)
 
   gst_buffer_map (buf, &imap, GST_MAP_READ);
   gst_buffer_map (outbuf, &omap, GST_MAP_READ);
-  gst_buffer_unref (buf);
 
   g729_decode (dec, imap.data, imap.size, (gint16 *) omap.data);
+
+  gst_buffer_unmap (buf, &imap);
+  gst_buffer_unmap (outbuf, &omap);
 
   return gst_audio_decoder_finish_frame (GST_AUDIO_DECODER (dec), outbuf, 1);
 }
