@@ -138,6 +138,7 @@ gst_g729_enc_class_init (GstG729EncClass * klass)
 static void
 gst_g729_enc_init (GstG729Enc * enc)
 {
+  gst_audio_encoder_set_drainable (GST_AUDIO_ENCODER (enc), FALSE);
   gst_audio_encoder_set_latency (GST_AUDIO_ENCODER (enc), 30 * GST_MSECOND, 30 * GST_MSECOND);
 
   enc->vad = DEFAULT_VAD;

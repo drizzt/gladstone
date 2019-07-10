@@ -150,6 +150,7 @@ gst_g729_dec_reset (GstG729Dec * dec)
 static void
 gst_g729_dec_init (GstG729Dec * dec)
 {
+  gst_audio_decoder_set_drainable (GST_AUDIO_DECODER (dec), FALSE);
   gst_g729_dec_reset (dec);
 }
 
